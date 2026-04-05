@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Pitman Image Recognition</title>
-<style>
- body { text-align:center; font-family:Arial; }
- canvas { border:2px solid black; touch-action:none; }
-</style>
+  <title>Pitman PNG Intelligent Recognition</title>
+  <style>
+    body { text-align:center; font-family:Arial; }
+    canvas { border:2px solid black; touch-action:none; }
+    button { margin:10px; padding:10px; }
+  </style>
 </head>
 <body>
 
-<h2>Draw Shorthand → Recognize</h2>
+<h2>Draw Shorthand → Recognize (PNG Smart Match)</h2>
 
 <canvas id="canvas" width="200" height="200"></canvas><br>
 
@@ -24,7 +25,7 @@ const ctx = canvas.getContext("2d");
 
 let drawing = false;
 
-// -------- DRAW --------
+// ---------------- DRAW ----------------
 canvas.addEventListener("mousedown", start);
 canvas.addEventListener("mousemove", draw);
 canvas.addEventListener("mouseup", end);
@@ -32,84 +33,80 @@ canvas.addEventListener("mouseleave", end);
 
 canvas.addEventListener("touchstart", e => start(e.touches[0]));
 canvas.addEventListener("touchmove", e => {
-e.preventDefault();
-draw(e.touches[0]);
+  e.preventDefault();
+  draw(e.touches[0]);
 });
 canvas.addEventListener("touchend", end);
-canvas.addEventListener("touchcancel", end);
 
 function getPos(e){
-let r = canvas.getBoundingClientRect();
-return {
- x: e.clientX - r.left,
- y: e.clientY - r.top
-};
+  let r = canvas.getBoundingClientRect();
+  return {
+    x: e.clientX - r.left,
+    y: e.clientY - r.top
+  };
 }
 
 function start(e){
-drawing = true;
-ctx.beginPath();
-let p = getPos(e);
-ctx.moveTo(p.x, p.y);
+  drawing = true;
+  ctx.beginPath();
+  let p = getPos(e);
+  ctx.moveTo(p.x, p.y);
 }
 
 function draw(e){
-if(!drawing) return;
+  if(!drawing) return;
 
-let p = getPos(e);
+  let p = getPos(e);
 
-ctx.lineWidth = 8;
-ctx.lineCap = "round";
-ctx.strokeStyle = "black";
+  ctx.lineWidth = 8;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "black";
 
-ctx.lineTo(p.x, p.y);
-ctx.stroke();
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
 }
 
 function end(){
-drawing = false;
+  drawing = false;
 }
 
-// -------- CLEAR --------
 function clearCanvas(){
-ctx.clearRect(0,0,200,200);
-document.getElementById("result").innerText = "Cleared";
+  ctx.clearRect(0,0,200,200);
+  document.getElementById("result").innerText = "Cleared";
 }
 
-// -------- DATASET --------
+// ---------------- DATASET ----------------
 const dataset = [
-{name:"P", img:"./P.png"},
-{name:"B", img:"./B.png"},
-{name:"Ch", img:"./Ch.png"},
-{name:"J", img:"./J.png"},
-{name:"T", img:"./T.png"},
-{name:"D", img:"./D.png"},
-{name:"K", img:"./K.png"},
-{name:"Gay", img:"./Gay.png"},
-{name:"F", img:"./F.png"},
-{name:"V", img:"./V.png"},
+  {name:"P", img:"./P.png"},
+  {name:"B", img:"./B.png"},
+  {name:"Ch", img:"./Ch.png"},
+  {name:"J", img:"./J.png"},
+  {name:"T", img:"./T.png"},
+  {name:"D", img:"./D.png"},
+  {name:"K", img:"./K.png"},
+  {name:"Gay", img:"./Gay.png"},
+  {name:"F", img:"./F.png"},
+  {name:"V", img:"./V.png"},
 ];
 
-// -------- IMAGE PROCESS --------
+// ---------------- NORMALIZE USER DRAWING ----------------
 function getCanvasData(){
   let temp = document.createElement("canvas");
   temp.width = 50;
   temp.height = 50;
   let tctx = temp.getContext("2d");
 
-  // Get original image
   let imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
   let data = imgData.data;
 
-  // Find bounding box of drawing
   let minX=999, minY=999, maxX=0, maxY=0;
 
   for(let y=0;y<canvas.height;y++){
     for(let x=0;x<canvas.width;x++){
       let i = (y*canvas.width + x)*4;
-      let val = data[i]; // red channel
+      let val = data[i];
 
-      if(val < 200){ // dark pixel
+      if(val < 200){
         if(x<minX) minX=x;
         if(y<minY) minY=y;
         if(x>maxX) maxX=x;
@@ -118,13 +115,11 @@ function getCanvasData(){
     }
   }
 
-  // If nothing drawn
   if(minX > maxX) return null;
 
   let w = maxX - minX;
   let h = maxY - minY;
 
-  // Draw cropped and centered
   tctx.fillStyle = "white";
   tctx.fillRect(0,0,50,50);
 
@@ -136,99 +131,113 @@ function getCanvasData(){
 
   let finalData = tctx.getImageData(0,0,50,50).data;
 
-  // Convert to binary (black/white)
+  // binary conversion
   for(let i=0;i<finalData.length;i+=4){
-    let avg = (finalData[i] + finalData[i+1] + finalData[i+2])/3;
+    let avg = (finalData[i]+finalData[i+1]+finalData[i+2])/3;
     let val = avg < 200 ? 0 : 255;
-
-    finalData[i] = val;
-    finalData[i+1] = val;
-    finalData[i+2] = val;
+    finalData[i]=finalData[i+1]=finalData[i+2]=val;
   }
 
   return finalData;
 }
 
+// ---------------- LOAD DATASET ----------------
 function loadImageData(src){
-return new Promise(resolve=>{
- let img = new Image();
- img.src = src;
+  return new Promise(resolve=>{
+    let img = new Image();
+    img.src = src;
 
- img.onload = () => {
-   let temp = document.createElement("canvas");
-   temp.width = 50;
-   temp.height = 50;
+    img.onload = () => {
+      let temp = document.createElement("canvas");
+      temp.width = 50;
+      temp.height = 50;
+      let tctx = temp.getContext("2d");
 
-   let tctx = temp.getContext("2d");
-   tctx.drawImage(img,0,0,50,50);
+      tctx.fillStyle = "white";
+      tctx.fillRect(0,0,50,50);
 
-   resolve(tctx.getImageData(0,0,50,50).data);
- };
+      tctx.drawImage(img,5,5,40,40);
 
- img.onerror = () => {
-   console.error("❌ Failed:", src);
-   resolve(null);
- };
-});
+      let data = tctx.getImageData(0,0,50,50).data;
+
+      for(let i=0;i<data.length;i+=4){
+        let avg = (data[i]+data[i+1]+data[i+2])/3;
+        let val = avg < 200 ? 0 : 255;
+        data[i]=data[i+1]=data[i+2]=val;
+      }
+
+      resolve(data);
+    };
+
+    img.onerror = () => {
+      console.error("❌ Failed:", src);
+      resolve(null);
+    };
+  });
 }
 
+// ---------------- COMPARE (SMART) ----------------
 function compare(a,b){
-let diff = 0;
+  let match = 0;
+  let total = 0;
 
-for(let i=0;i<a.length;i+=4){
- diff += Math.abs(a[i] - b[i]);
+  for(let i=0;i<a.length;i+=4){
+    let pa = a[i] < 128 ? 1 : 0;
+    let pb = b[i] < 128 ? 1 : 0;
+
+    if(pa === pb) match++;
+    total++;
+  }
+
+  return 1 - (match/total);
 }
 
-return diff;
-}
-
-// -------- PRELOAD --------
+// ---------------- PRELOAD ----------------
 let loadedDataset = [];
 
-async function preloadImages(){
-for(let item of dataset){
- let data = await loadImageData(item.img);
- if(data){
-   loadedDataset.push({
-     name: item.name,
-     data: data
-   });
- }
+async function preload(){
+  for(let item of dataset){
+    let data = await loadImageData(item.img);
+    if(data){
+      loadedDataset.push({
+        name: item.name,
+        data: data
+      });
+    }
+  }
+
+  console.log("✅ Dataset ready:", loadedDataset.length);
 }
 
-console.log("✅ Dataset ready:", loadedDataset.length);
-}
+preload();
 
-preloadImages();
-
-// -------- RECOGNITION --------
+// ---------------- RECOGNITION ----------------
 function recognize(){
-if(loadedDataset.length === 0){
- document.getElementById("result").innerText =
-   "⚠️ Images not loaded yet";
- return;
-}
+  let userData = getCanvasData();
 
-let userData = getCanvasData();
+  if(!userData){
+    document.getElementById("result").innerText = "Draw something first";
+    return;
+  }
 
-let bestMatch = null;
-let bestScore = Infinity;
+  let bestMatch = null;
+  let bestScore = 1;
 
-for(let item of loadedDataset){
- let score = compare(userData, item.data);
+  for(let item of loadedDataset){
+    let score = compare(userData, item.data);
 
- if(score < bestScore){
-   bestScore = score;
-   bestMatch = item.name;
- }
-}
+    if(score < bestScore){
+      bestScore = score;
+      bestMatch = item.name;
+    }
+  }
 
-if(bestScore > 400000){
- document.getElementById("result").innerText = "❌ No match";
-} else {
- document.getElementById("result").innerText =
-   "✅ Detected: " + bestMatch + " (score: " + bestScore + ")";
-}
+  if(bestScore > 0.25){
+    document.getElementById("result").innerText = "❌ No match";
+  } else {
+    document.getElementById("result").innerText =
+      "✅ Detected: " + bestMatch + " (score: " + bestScore.toFixed(2) + ")";
+  }
 }
 </script>
 
