@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Pitman Image Recognition</title>
-  <style>
-    body { text-align:center; font-family:Arial; }
-    canvas { border:2px solid black; touch-action:none; }
-  </style>
+<title>Pitman Image Recognition</title>
+<style>
+ body { text-align:center; font-family:Arial; }
+ canvas { border:2px solid black; touch-action:none; }
+</style>
 </head>
 <body>
 
@@ -16,7 +16,7 @@
 <button onclick="clearCanvas()">Clear</button>
 <button onclick="recognize()">Recognize</button>
 
-<h3 id="result"></h3>
+<h3 id="result">Draw something...</h3>
 
 <script>
 const canvas = document.getElementById("canvas");
@@ -28,137 +28,162 @@ let drawing = false;
 canvas.addEventListener("mousedown", start);
 canvas.addEventListener("mousemove", draw);
 canvas.addEventListener("mouseup", end);
+canvas.addEventListener("mouseleave", end);
 
-canvas.addEventListener("touchstart", e=>start(e.touches[0]));
-canvas.addEventListener("touchmove", e=>{
-  e.preventDefault();
-  draw(e.touches[0]);
+canvas.addEventListener("touchstart", e => start(e.touches[0]));
+canvas.addEventListener("touchmove", e => {
+e.preventDefault();
+draw(e.touches[0]);
 });
 canvas.addEventListener("touchend", end);
+canvas.addEventListener("touchcancel", end);
+
+function getPos(e){
+let r = canvas.getBoundingClientRect();
+return {
+ x: e.clientX - r.left,
+ y: e.clientY - r.top
+};
+}
 
 function start(e){
-  drawing=true;
-  ctx.beginPath();
-
-  let r = canvas.getBoundingClientRect();
-  ctx.moveTo(e.clientX - r.left, e.clientY - r.top);
+drawing = true;
+ctx.beginPath();
+let p = getPos(e);
+ctx.moveTo(p.x, p.y);
 }
 
 function draw(e){
-  if(!drawing) return;
+if(!drawing) return;
 
-  let r = canvas.getBoundingClientRect();
-  ctx.lineWidth=5;
-  ctx.lineCap="round";
-  ctx.lineTo(e.clientX - r.left, e.clientY - r.top);
-  ctx.stroke();
+let p = getPos(e);
+
+ctx.lineWidth = 8;
+ctx.lineCap = "round";
+ctx.strokeStyle = "black";
+
+ctx.lineTo(p.x, p.y);
+ctx.stroke();
 }
 
-function end(){ drawing=false; }
+function end(){
+drawing = false;
+}
 
+// -------- CLEAR --------
 function clearCanvas(){
-  ctx.clearRect(0,0,200,200);
+ctx.clearRect(0,0,200,200);
+document.getElementById("result").innerText = "Cleared";
 }
 
 // -------- DATASET --------
 const dataset = [
-  {name:"P", img:"./P.png"},
-  {name:"B", img:"./B.png"},
-  {name:"Ch", img:"./Ch.png"},
-  {name:"J", img:"./J.png"},
-  {name:"T", img:"./T.png"},
-  {name:"D", img:"./D.png"},
-  {name:"K", img:"./K.png"},
-  {name:"Gay", img:"./Gay.png"},
-  {name:"F", img:"./F.png"},
-  {name:"V", img:"./V.png"},
+{name:"P", img:"./P.png"},
+{name:"B", img:"./B.png"},
+{name:"Ch", img:"./Ch.png"},
+{name:"J", img:"./J.png"},
+{name:"T", img:"./T.png"},
+{name:"D", img:"./D.png"},
+{name:"K", img:"./K.png"},
+{name:"Gay", img:"./Gay.png"},
+{name:"F", img:"./F.png"},
+{name:"V", img:"./V.png"},
 ];
-  
-// -------- IMAGE COMPARISON --------
-function getCanvasData(c){
-  let temp = document.createElement("canvas");
-  temp.width = 50;
-  temp.height = 50;
 
-  let tctx = temp.getContext("2d");
-  tctx.drawImage(c,0,0,50,50);
+// -------- IMAGE PROCESS --------
+function getCanvasData(){
+let temp = document.createElement("canvas");
+temp.width = 50;
+temp.height = 50;
 
-  return tctx.getImageData(0,0,50,50).data;
+let tctx = temp.getContext("2d");
+tctx.drawImage(canvas,0,0,50,50);
+
+return tctx.getImageData(0,0,50,50).data;
 }
 
 function loadImageData(src){
-  return new Promise(resolve=>{
-    let img = new Image();
-    img.src = src;
+return new Promise(resolve=>{
+ let img = new Image();
+ img.src = src;
 
-    img.onload = () => {
-      let temp = document.createElement("canvas");
-      temp.width = 50;
-      temp.height = 50;
+ img.onload = () => {
+   let temp = document.createElement("canvas");
+   temp.width = 50;
+   temp.height = 50;
 
-      let tctx = temp.getContext("2d");
-      tctx.drawImage(img,0,0,50,50);
+   let tctx = temp.getContext("2d");
+   tctx.drawImage(img,0,0,50,50);
 
-      resolve(tctx.getImageData(0,0,50,50).data);
-    };
-  });
+   resolve(tctx.getImageData(0,0,50,50).data);
+ };
+
+ img.onerror = () => {
+   console.error("❌ Failed:", src);
+   resolve(null);
+ };
+});
 }
 
 function compare(a,b){
-  let diff = 0;
+let diff = 0;
 
-  for(let i=0;i<a.length;i+=4){
-    diff += Math.abs(a[i] - b[i]); // compare red channel only
-  }
-
-  return diff;
+for(let i=0;i<a.length;i+=4){
+ diff += Math.abs(a[i] - b[i]);
 }
 
+return diff;
+}
+
+// -------- PRELOAD --------
 let loadedDataset = [];
 
 async function preloadImages(){
-  for(let item of dataset){
-    let data = await loadImageData(item.img);
-    loadedDataset.push({
-      name: item.name,
-      data: data
-    });
-  }
-  console.log("✅ Images loaded");
+for(let item of dataset){
+ let data = await loadImageData(item.img);
+ if(data){
+   loadedDataset.push({
+     name: item.name,
+     data: data
+   });
+ }
+}
+
+console.log("✅ Dataset ready:", loadedDataset.length);
 }
 
 preloadImages();
 
-
-  
 // -------- RECOGNITION --------
-async function recognize(){
-  let userData = getCanvasData(canvas);
-
-  let bestMatch = null;
-  let bestScore = Infinity;
-
-  for(let item of loadedDataset){
-    let score = compare(userData, item.data);
-
-    if(score < bestScore){
-      bestScore = score;
-      bestMatch = item.name;
-    }
-  }
-
-  if(bestScore > 200000){
-    document.getElementById("result").innerText =
-      "❌ No match";
-  } else {
-    document.getElementById("result").innerText =
-      "✅ Detected: " + bestMatch;
-  }
+function recognize(){
+if(loadedDataset.length === 0){
+ document.getElementById("result").innerText =
+   "⚠️ Images not loaded yet";
+ return;
 }
 
-  document.getElementById("result").innerText =
-    "Detected: " + bestMatch + " (score: " + bestScore + ")";
+let userData = getCanvasData();
+
+let bestMatch = null;
+let bestScore = Infinity;
+
+for(let item of loadedDataset){
+ let score = compare(userData, item.data);
+
+ if(score < bestScore){
+   bestScore = score;
+   bestMatch = item.name;
+ }
+}
+
+if(bestScore > 200000){
+ document.getElementById("result").innerText = "❌ No match";
+} else {
+ document.getElementById("result").innerText =
+   "✅ Detected: " + bestMatch + " (score: " + bestScore + ")";
+}
 }
 </script>
+
 </body>
 </html>
