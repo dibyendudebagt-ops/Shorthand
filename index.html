@@ -73,6 +73,7 @@ const dataset = [
   {name:"F", img:"./F.png"},
   {name:"V", img:"./V.png"},
 ];
+  
 // -------- IMAGE COMPARISON --------
 function getCanvasData(c){
   let temp = document.createElement("canvas");
@@ -113,6 +114,23 @@ function compare(a,b){
   return diff;
 }
 
+let loadedDataset = [];
+
+async function preloadImages(){
+  for(let item of dataset){
+    let data = await loadImageData(item.img);
+    loadedDataset.push({
+      name: item.name,
+      data: data
+    });
+  }
+  console.log("✅ Images loaded");
+}
+
+preloadImages();
+
+
+  
 // -------- RECOGNITION --------
 async function recognize(){
   let userData = getCanvasData(canvas);
@@ -120,15 +138,23 @@ async function recognize(){
   let bestMatch = null;
   let bestScore = Infinity;
 
-  for(let item of dataset){
-    let data = await loadImageData(item.img);
-    let score = compare(userData, data);
+  for(let item of loadedDataset){
+    let score = compare(userData, item.data);
 
     if(score < bestScore){
       bestScore = score;
       bestMatch = item.name;
     }
   }
+
+  if(bestScore > 200000){
+    document.getElementById("result").innerText =
+      "❌ No match";
+  } else {
+    document.getElementById("result").innerText =
+      "✅ Detected: " + bestMatch;
+  }
+}
 
   document.getElementById("result").innerText =
     "Detected: " + bestMatch + " (score: " + bestScore + ")";
