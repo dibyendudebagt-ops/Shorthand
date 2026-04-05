@@ -92,14 +92,61 @@ const dataset = [
 
 // -------- IMAGE PROCESS --------
 function getCanvasData(){
-let temp = document.createElement("canvas");
-temp.width = 50;
-temp.height = 50;
+  let temp = document.createElement("canvas");
+  temp.width = 50;
+  temp.height = 50;
+  let tctx = temp.getContext("2d");
 
-let tctx = temp.getContext("2d");
-tctx.drawImage(canvas,0,0,50,50);
+  // Get original image
+  let imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+  let data = imgData.data;
 
-return tctx.getImageData(0,0,50,50).data;
+  // Find bounding box of drawing
+  let minX=999, minY=999, maxX=0, maxY=0;
+
+  for(let y=0;y<canvas.height;y++){
+    for(let x=0;x<canvas.width;x++){
+      let i = (y*canvas.width + x)*4;
+      let val = data[i]; // red channel
+
+      if(val < 200){ // dark pixel
+        if(x<minX) minX=x;
+        if(y<minY) minY=y;
+        if(x>maxX) maxX=x;
+        if(y>maxY) maxY=y;
+      }
+    }
+  }
+
+  // If nothing drawn
+  if(minX > maxX) return null;
+
+  let w = maxX - minX;
+  let h = maxY - minY;
+
+  // Draw cropped and centered
+  tctx.fillStyle = "white";
+  tctx.fillRect(0,0,50,50);
+
+  tctx.drawImage(
+    canvas,
+    minX, minY, w, h,
+    5, 5, 40, 40
+  );
+
+  let finalData = tctx.getImageData(0,0,50,50).data;
+
+  // Convert to binary (black/white)
+  for(let i=0;i<finalData.length;i+=4){
+    let avg = (finalData[i] + finalData[i+1] + finalData[i+2])/3;
+    let val = avg < 200 ? 0 : 255;
+
+    finalData[i] = val;
+    finalData[i+1] = val;
+    finalData[i+2] = val;
+  }
+
+  return finalData;
 }
 
 function loadImageData(src){
