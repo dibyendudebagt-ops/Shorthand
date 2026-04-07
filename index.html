@@ -10,7 +10,7 @@
 </head>
 <body>
 
-<h2>Smart Pitman Recognition 🚀</h2>
+<h2>Smart Pitman Recognition </h2>
 
 <canvas id="canvas" width="220" height="220"></canvas><br>
 
@@ -181,15 +181,15 @@ function recognize(){
 
   // Straight strokes
   if(!curve){
-    if(Math.abs(angle) < 20) result = "P";
+    if(Math.abs(angle) > 50  && Math.abs(angle) < 90) result = "P";
     else if(Math.abs(angle) > 70 && Math.abs(angle) < 110) result = "T";
-    else if(Math.abs(angle) > 20 && Math.abs(angle) < 70) result = "K";
+    else if(Math.abs(angle) < 90 && Math.abs(angle) < 180) result = "K";
   }
 
   // Curves
   else{
     if(dir === "right") result = "F";   // matches your case
-    else result = "M";
+    else if(dir === "left")  result = "Ish";
   }
 
   // -------- PNG REFINEMENT --------
