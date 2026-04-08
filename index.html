@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Pitman Smart Recognition (Hybrid AI)</title>
+  <title>Pitman Smart Recognition (Curve Fixed)</title>
   <style>
     body { text-align:center; font-family:Arial; }
     canvas { border:2px solid black; touch-action:none; }
@@ -10,9 +10,9 @@
 </head>
 <body>
 
-<h2>Smart Pitman Recognition </h2>
+<h2>Pitman Smart Recognition ✍️</h2>
 
-<canvas id="canvas" width="220" height="220"></canvas><br>
+<canvas id="canvas" width="260" height="260"></canvas><br>
 
 <button onclick="clearCanvas()">Clear</button>
 <button onclick="recognize()">Recognize</button>
@@ -26,7 +26,7 @@ const ctx = canvas.getContext("2d");
 let drawing = false;
 let stroke = [];
 
-// ---------------- DRAW ----------------
+// -------- DRAW --------
 canvas.addEventListener("mousedown", start);
 canvas.addEventListener("mousemove", draw);
 canvas.addEventListener("mouseup", end);
@@ -69,22 +69,23 @@ function draw(e){
 function end(){ drawing=false; }
 
 function clearCanvas(){
-  ctx.clearRect(0,0,220,220);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
   stroke=[];
   document.getElementById("result").innerText="";
 }
 
-// ---------------- FEATURE ENGINE ----------------
+// -------- MATH --------
 function getAngle(a,b){
   return Math.atan2(b.y-a.y, b.x-a.x) * 180/Math.PI;
 }
 
 function getLength(){
-  let start = stroke[0];
-  let end = stroke[stroke.length-1];
-  return Math.hypot(end.x-start.x, end.y-start.y);
+  let s = stroke[0];
+  let e = stroke[stroke.length-1];
+  return Math.hypot(e.x-s.x, e.y-s.y);
 }
 
+// -------- CURVE DETECTION --------
 function isCurve(){
   let total=0;
   for(let i=2;i<stroke.length;i++){
@@ -95,125 +96,109 @@ function isCurve(){
     if(diff>180) diff = 360-diff;
     total += diff;
   }
-  return total > 60;
+  return total > 80;
 }
 
-function curveDirection(){
-  let sum=0;
-  for(let i=2;i<stroke.length;i++){
-    let a1 = getAngle(stroke[i-2], stroke[i-1]);
-    let a2 = getAngle(stroke[i-1], stroke[i]);
-    sum += (a2-a1);
-  }
-  return sum > 0 ? "left" : "right";
+// -------- CURVE SHAPE (IMPORTANT) --------
+function curveBulgeDirection(){
+  // Compare midpoint to straight line
+  let start = stroke[0];
+  let end = stroke[stroke.length-1];
+  let mid = stroke[Math.floor(stroke.length/2)];
+
+  // Line equation reference
+  let dx = end.x - start.x;
+  let dy = end.y - start.y;
+
+  let normal = (mid.x - start.x)*dy - (mid.y - start.y)*dx;
+
+  // If midpoint is pushed right or left of line
+  return normal > 0 ? "left" : "right";
 }
 
-// ---------------- PNG ASSIST ----------------
-const dataset = [
-  {name:"P", img:"./P.png"},
-  {name:"B", img:"./B.png"},
-  {name:"Ch", img:"./Ch.png"},
-  {name:"J", img:"./J.png"},
-  {name:"T", img:"./T.png"},
-  {name:"D", img:"./D.png"},
-  {name:"K", img:"./K.png"},
-  {name:"Gay", img:"./Gay.png"},
-  {name:"F", img:"./F.png"},
-  {name:"V", img:"./V.png"},
-];
-
-let loaded = [];
-
-async function preload(){
-  for(let d of dataset){
-    let img = new Image();
-    img.src = d.img;
-    await new Promise(res=>img.onload=res);
-
-    let c = document.createElement("canvas");
-    c.width=50; c.height=50;
-    let ct = c.getContext("2d");
-    ct.drawImage(img,0,0,50,50);
-
-    loaded.push({
-      name:d.name,
-      data: ct.getImageData(0,0,50,50).data
-    });
-  }
-}
-preload();
-
-function getCanvasData(){
-  let c = document.createElement("canvas");
-  c.width=50; c.height=50;
-  let ct = c.getContext("2d");
-  ct.drawImage(canvas,0,0,50,50);
-  return ct.getImageData(0,0,50,50).data;
-}
-
-function compare(a,b){
-  let diff=0;
-  for(let i=0;i<a.length;i+=4){
-    diff += Math.abs(a[i]-b[i]);
-  }
-  return diff;
-}
-
-// ---------------- SMART RECOGNITION ----------------
+// -------- MAIN RECOGNITION --------
 function recognize(){
 
   if(stroke.length < 5){
-    document.getElementById("result").innerText="Draw properly";
+    document.getElementById("result").innerText="❌ Draw properly";
     return;
   }
 
   let start = stroke[0];
   let end = stroke[stroke.length-1];
 
-  let angle = getAngle(start,end);
+  let angle = getAngle(start, end);
+  let a = angle;
+  if (a < 0) a += 360;
+
+  let absA = Math.abs(angle);
   let length = getLength();
   let curve = isCurve();
-  let dir = curveDirection();
 
   let result = "Unknown";
 
-  // -------- RULE ENGINE --------
+  // =======================
+  // STRAIGHT STROKES
+  // =======================
+if (!curve) {
 
-  // Straight strokes
-  if(!curve){
-    if(Math.abs(angle) > 50  && Math.abs(angle) < 90) result = "P";
-    else if(Math.abs(angle) > 70 && Math.abs(angle) < 110) result = "T";
-    else if(Math.abs(angle) < 90 && Math.abs(angle) < 180) result = "K";
+  if (a > 0 && a < 80){
+    result = (length > 80) ? "B" : "P";
   }
 
-  // Curves
-  else{
-    if(dir === "right") result = "F";   // matches your case
-    else if(dir === "left")  result = "Ish";
+  else if (a >= 80 && a <= 95){
+    result = (length > 80) ? "D" : "T";
   }
 
-  // -------- PNG REFINEMENT --------
-  let userData = getCanvasData();
-  let best = result;
-  let bestScore = Infinity;
+  else if (a > 95 && a < 150){
+    result = (length > 80) ? "J" : "Ch";
+  }
 
-  for(let item of loaded){
-    let score = compare(userData, item.data);
+  else if (a >= 150 && a <= 180){
+    result = (length > 160) ? "G" : "K";
+  }
+}
 
-    if(score < bestScore){
-      bestScore = score;
-      best = item.name;
+  // =======================
+  // CURVES (IMPROVED)
+  // =======================
+  else {
+
+    let bulge = curveBulgeDirection();
+
+    // RIGHT bulge → Ith / The
+    if (bulge === "right"){
+      result = (length > 90) ? "Ith" : "Th";
+    }
+
+    // LEFT bulge → S / Z
+    else{
+      result = (length > 90) ? "S" : "Z";
+    }
+
+    // Nasals override
+    if (stroke.length > 25 && stroke.length < 60){
+      result = (bulge === "right") ? "M" : "N";
+    }
+
+    if (stroke.length > 60){
+      result = "NG";
     }
   }
 
-  // Combine logic + image
-  if(bestScore < 180000){
-    result = best;
+  // =======================
+  // SMALL TICKS
+  // =======================
+  if (length < 35){
+    if (absA < 20) result = "W";
+    else if (absA > 70) result = "Y";
+    else result = "H";
   }
 
   document.getElementById("result").innerText =
-    "Detected: " + result + " | angle:"+Math.round(angle)+" | curve:"+curve+" | dir:"+dir;
+    `✅ ${result} | angle:${Math.round(angle)}° | curve:${curve}`;
 }
+
 </script>
 <h3>Application Feedback</h3>
 
